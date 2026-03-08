@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://100.27.155.251:8000";
+const API_BASE_URL = "https://d3iatlbqjvlvhl.cloudfront.net";
 
 class ApiClient {
   private baseUrl: string;
