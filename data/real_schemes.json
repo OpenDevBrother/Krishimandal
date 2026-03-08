@@ -1,0 +1,212 @@
+[
+  {
+    "id": "PMKISAN",
+    "name": "PM-KISAN (Pradhan Mantri Kisan Samman Nidhi)",
+    "benefits_inr": 6000,
+    "deadline": null,
+    "description": "Direct income support of Rs 6,000 per year to all land-holding farmer families, transferred in 3 equal instalments of Rs 2,000 each via Direct Benefit Transfer (DBT) into Aadhaar-linked bank account. Largest direct cash transfer scheme for Indian farmers.",
+    "requirements": ["Aadhaar Card", "Bank Account with IFSC", "Land Ownership Records (7/12 extract)", "Mobile Number linked to Aadhaar"],
+    "eligibility": {
+      "land_size_min_ha": 0,
+      "land_size_max_ha": null,
+      "income_max_inr": null,
+      "states": [],
+      "categories": ["general", "sc", "st", "obc"],
+      "age_min": 18,
+      "age_max": null,
+      "exclusions": ["institutional_landholder", "income_tax_payer", "government_employee", "constitutional_post_holder"]
+    },
+    "application_url": "https://pmkisan.gov.in",
+    "category": "income_support",
+    "is_active": true
+  },
+  {
+    "id": "PMFBY",
+    "name": "PM Fasal Bima Yojana (Crop Insurance)",
+    "benefits_inr": 200000,
+    "deadline": null,
+    "description": "Comprehensive crop insurance at subsidized premiums. Kharif crops at 2% premium, Rabi at 1.5%, horticulture at 5%. Covers natural calamities, pest/disease, post-harvest losses up to 14 days. Government pays balance premium. Voluntary since Kharif 2020. Sum insured based on district-wise Scale of Finance.",
+    "requirements": ["Aadhaar Card", "Bank Account", "Land Records (7/12 extract)", "Sowing Certificate from Patwari"],
+    "eligibility": {
+      "land_size_min_ha": 0,
+      "land_size_max_ha": null,
+      "income_max_inr": null,
+      "states": [],
+      "categories": ["general", "sc", "st", "obc"],
+      "age_min": 18,
+      "age_max": null,
+      "exclusions": []
+    },
+    "application_url": "https://pmfby.gov.in",
+    "category": "crop_insurance",
+    "is_active": true
+  },
+  {
+    "id": "KCC",
+    "name": "Kisan Credit Card (KCC)",
+    "benefits_inr": 300000,
+    "deadline": null,
+    "description": "Crop loan at just 4% effective interest rate (7% minus 3% subvention for prompt repayment). Credit limit up to Rs 3 lakh per year. Includes crop production cost, post-harvest expenses, crop insurance. ATM-enabled RuPay card. No collateral needed up to Rs 1.6 lakh. 5-year validity with annual renewal.",
+    "requirements": ["Aadhaar Card", "PAN Card (for >Rs 1 lakh)", "Land Records", "Passport Photo", "Bank Account"],
+    "eligibility": {
+      "land_size_min_ha": 0,
+      "land_size_max_ha": null,
+      "income_max_inr": null,
+      "states": [],
+      "categories": ["general", "sc", "st", "obc"],
+      "age_min": 18,
+      "age_max": 75,
+      "exclusions": []
+    },
+    "application_url": "https://www.nabard.org/content1.aspx?id=592&catid=23&mid=530",
+    "category": "credit",
+    "is_active": true
+  },
+  {
+    "id": "PMKUSUM",
+    "name": "PM-KUSUM (Solar Pump Scheme)",
+    "benefits_inr": 200000,
+    "deadline": null,
+    "description": "Promotes solar energy in agriculture with 60% subsidy (30% central + 30% state) on standalone solar pumps up to 7.5 HP. Component B: Individual solar pumps. Component C: Solarisation of existing grid-connected pumps with surplus power sale to DISCOM at Rs 3.5/unit. Zero electricity cost for 25 years.",
+    "requirements": ["Land Records", "Aadhaar Card", "Bank Account", "Water Source Proof (for pump)", "Existing Electricity Connection (for Component C)"],
+    "eligibility": {
+      "land_size_min_ha": 0,
+      "land_size_max_ha": null,
+      "income_max_inr": null,
+      "states": [],
+      "categories": ["general", "sc", "st", "obc"],
+      "age_min": 18,
+      "age_max": null,
+      "exclusions": []
+    },
+    "application_url": "https://pmkusum.mnre.gov.in",
+    "category": "energy",
+    "is_active": true
+  },
+  {
+    "id": "PMKSY",
+    "name": "PMKSY - Per Drop More Crop (Micro-Irrigation)",
+    "benefits_inr": 80000,
+    "deadline": null,
+    "description": "Subsidy on micro-irrigation systems (drip and sprinkler). General category: 55% subsidy. SC/ST and small/marginal farmers (<2 ha): 70% subsidy. Maximum Rs 80,000/ha for drip, Rs 30,000/ha for sprinkler. Saves 30-50% water, increases yield 20-30%. Apply through state horticulture/agriculture department.",
+    "requirements": ["Land Records (7/12 extract)", "Aadhaar Card", "Bank Passbook", "Soil/Water Test Report", "Quotation from approved supplier"],
+    "eligibility": {
+      "land_size_min_ha": 0,
+      "land_size_max_ha": null,
+      "income_max_inr": null,
+      "states": [],
+      "categories": ["general", "sc", "st", "obc"],
+      "age_min": 18,
+      "age_max": null,
+      "exclusions": []
+    },
+    "application_url": "https://pmksy.gov.in",
+    "category": "irrigation",
+    "is_active": true
+  },
+  {
+    "id": "SHC",
+    "name": "Soil Health Card Scheme",
+    "benefits_inr": 0,
+    "deadline": null,
+    "description": "Free soil testing and health card with crop-wise nutrient recommendations every 2 years. Tests pH, EC, Organic Carbon, N, P, K, S, Zn, B, Fe, Mn, Cu. Helps optimize fertilizer use, saving Rs 2,000-5,000/ha annually. Available at KVKs, state soil testing labs, and agricultural universities.",
+    "requirements": ["Aadhaar Card", "Land Details", "Soil Sample"],
+    "eligibility": {
+      "land_size_min_ha": 0,
+      "land_size_max_ha": null,
+      "income_max_inr": null,
+      "states": [],
+      "categories": ["general", "sc", "st", "obc"],
+      "age_min": 0,
+      "age_max": null,
+      "exclusions": []
+    },
+    "application_url": "https://soilhealth.dac.gov.in",
+    "category": "soil_health",
+    "is_active": true
+  },
+  {
+    "id": "ENAM",
+    "name": "e-NAM (National Agriculture Market)",
+    "benefits_inr": 0,
+    "deadline": null,
+    "description": "Electronic trading portal linking 1,361+ APMC mandis across India. Enables farmers to sell produce online to traders across states for better price discovery. Average 5-15% higher price realization through competitive bidding. Electronic payment within 24-48 hours. Free registration. 120+ mandis in Maharashtra.",
+    "requirements": ["Aadhaar Card", "Bank Account", "Mobile Number"],
+    "eligibility": {
+      "land_size_min_ha": 0,
+      "land_size_max_ha": null,
+      "income_max_inr": null,
+      "states": [],
+      "categories": ["general", "sc", "st", "obc"],
+      "age_min": 18,
+      "age_max": null,
+      "exclusions": []
+    },
+    "application_url": "https://enam.gov.in",
+    "category": "market_access",
+    "is_active": true
+  },
+  {
+    "id": "NFSM",
+    "name": "National Food Security Mission (NFSM)",
+    "benefits_inr": 50000,
+    "deadline": null,
+    "description": "Subsidized/free seeds, fertilizers, equipment and demonstrations for wheat, rice, pulses, oilseeds, and nutri-cereals. Includes cluster demonstrations, seed distribution, farm mechanization support, and INM/IPM demonstrations. Apply through District Agriculture Officer.",
+    "requirements": ["Aadhaar Card", "Land Records", "Bank Account"],
+    "eligibility": {
+      "land_size_min_ha": 0,
+      "land_size_max_ha": null,
+      "income_max_inr": null,
+      "states": [],
+      "categories": ["general", "sc", "st", "obc"],
+      "age_min": 18,
+      "age_max": null,
+      "exclusions": []
+    },
+    "application_url": "https://nfsm.gov.in",
+    "category": "production_support",
+    "is_active": true
+  },
+  {
+    "id": "MIDH",
+    "name": "Mission for Integrated Development of Horticulture (MIDH)",
+    "benefits_inr": 560000,
+    "deadline": null,
+    "description": "Subsidies for horticulture development: New fruit orchards Rs 30,000-60,000/ha, protected cultivation (polyhouse 50% up to Rs 56 lakh/4000 sq.m, shade net 50%), post-harvest infrastructure (pack house, cold storage, ripening chamber). Covers fruits, vegetables, spices, flowers, medicinal plants.",
+    "requirements": ["Land Records", "Aadhaar Card", "Bank Account", "Project Report (for infrastructure)", "Quotation from approved supplier"],
+    "eligibility": {
+      "land_size_min_ha": 0,
+      "land_size_max_ha": null,
+      "income_max_inr": null,
+      "states": [],
+      "categories": ["general", "sc", "st", "obc"],
+      "age_min": 18,
+      "age_max": null,
+      "exclusions": []
+    },
+    "application_url": "https://midh.gov.in",
+    "category": "horticulture",
+    "is_active": true
+  },
+  {
+    "id": "MAHADBT",
+    "name": "MahaDBT Agricultural Subsidies (Maharashtra)",
+    "benefits_inr": 125000,
+    "deadline": null,
+    "description": "Maharashtra's single-window portal for 40+ agricultural subsidies. Covers: Farm mechanization (40-50% subsidy on tractors, implements), micro-irrigation, protected cultivation, fruit orchards, watershed development (farm pond Rs 50,000), cattle purchase (50% up to Rs 50,000), poultry/goatery units. Apply online with Aadhaar-based registration.",
+    "requirements": ["Aadhaar Card", "7/12 Extract", "8A Extract", "Bank Passbook", "Caste Certificate (if applicable)"],
+    "eligibility": {
+      "land_size_min_ha": 0,
+      "land_size_max_ha": null,
+      "income_max_inr": null,
+      "states": ["Maharashtra"],
+      "categories": ["general", "sc", "st", "obc"],
+      "age_min": 18,
+      "age_max": null,
+      "exclusions": []
+    },
+    "application_url": "https://mahadbt.maharashtra.gov.in",
+    "category": "state_subsidy",
+    "is_active": true
+  }
+]

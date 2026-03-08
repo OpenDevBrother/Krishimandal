@@ -33,7 +33,6 @@ class DigitalTwinAgent:
     NAME = "digital_twin"
 
     def __init__(self):
-        # In production this would connect to RDS, Redis, Satellite APIs, etc.
         from src.dummy_data import dummy_farm_profile, dummy_farm_state, dummy_weather
         self._dummy_farm_profile = dummy_farm_profile
         self._dummy_farm_state = dummy_farm_state
@@ -44,21 +43,52 @@ class DigitalTwinAgent:
 
     def get_farm_profile(self, farmer_id: str) -> FarmProfile:
         """Retrieve or create a farm profile for the given farmer."""
+        if not settings.USE_DUMMY_DATA:
+            return self._get_farm_profile_db(farmer_id)
         if farmer_id in self._farm_store:
             return self._farm_store[farmer_id]
         profile = self._dummy_farm_profile(farmer_id)
         self._farm_store[farmer_id] = profile
         return profile
 
+    def _get_farm_profile_db(self, farmer_id: str) -> FarmProfile:
+        """Fetch farm profile from database."""
+        from src.database import SessionLocal
+        from src.repositories import farm_to_profile, get_farm_by_farmer
+        db = SessionLocal()
+        try:
+            farm = get_farm_by_farmer(db, farmer_id)
+            if farm:
+                return farm_to_profile(farm)
+            # Fallback to dummy if farmer not in DB
+            return self._dummy_farm_profile(farmer_id)
+        finally:
+            db.close()
+
     def get_farm_state(self, farm_id: str) -> FarmState:
         """Get the current state snapshot of a farm (NDVI, moisture, weather)."""
-        if settings.USE_DUMMY_DATA:
-            return self._dummy_farm_state(farm_id)
-        # Production: pull from Redis cache → RDS → Satellite API
+        if not settings.USE_DUMMY_DATA:
+            return self._get_farm_state_db(farm_id)
         return self._dummy_farm_state(farm_id)
+
+    def _get_farm_state_db(self, farm_id: str) -> FarmState:
+        """Fetch latest farm state from database."""
+        from src.database import SessionLocal
+        from src.repositories import farm_state_to_pydantic, get_latest_farm_state
+        db = SessionLocal()
+        try:
+            record = get_latest_farm_state(db, farm_id)
+            if record:
+                return farm_state_to_pydantic(record)
+            return self._dummy_farm_state(farm_id)
+        finally:
+            db.close()
 
     def get_weather(self, location: GeoCoordinates) -> WeatherSnapshot:
         """Fetch current weather + 7-day forecast for a location."""
+        # Use real weather if explicitly enabled, regardless of USE_DUMMY_DATA
+        if settings.USE_REAL_WEATHER and settings.OPENWEATHERMAP_API_KEY:
+            return self._fetch_weather_api(location)
         if settings.USE_DUMMY_DATA:
             return self._dummy_weather()
         return self._fetch_weather_api(location)
@@ -219,9 +249,10 @@ class DigitalTwinAgent:
     # ── Private helpers ──────────────────────────────────────────────────
 
     def _fetch_weather_api(self, location: GeoCoordinates) -> WeatherSnapshot:
-        """Call OpenWeatherMap API for real weather data."""
+        """Call OpenWeatherMap API for real weather data + 5-day forecast."""
         import requests
         try:
+            # Current weather
             url = "https://api.openweathermap.org/data/2.5/weather"
             params = {
                 "lat": location.lat,
@@ -232,13 +263,40 @@ class DigitalTwinAgent:
             r = requests.get(url, params=params, timeout=5)
             r.raise_for_status()
             d = r.json()
+
+            # 5-day forecast
+            forecast_7day = []
+            try:
+                forecast_url = "https://api.openweathermap.org/data/2.5/forecast"
+                fr = requests.get(forecast_url, params=params, timeout=5)
+                fr.raise_for_status()
+                fd = fr.json()
+                # Group by day, take one entry per day (noon)
+                seen_dates = set()
+                for item in fd.get("list", []):
+                    dt_txt = item.get("dt_txt", "")
+                    day = dt_txt.split(" ")[0] if dt_txt else ""
+                    if day and day not in seen_dates and len(seen_dates) < 7:
+                        seen_dates.add(day)
+                        forecast_7day.append({
+                            "date": day,
+                            "temp_min": item["main"]["temp_min"],
+                            "temp_max": item["main"]["temp_max"],
+                            "humidity": item["main"]["humidity"],
+                            "rainfall_mm": item.get("rain", {}).get("3h", 0),
+                            "condition": item["weather"][0]["main"].lower() if item.get("weather") else "clear",
+                        })
+            except Exception as fe:
+                logger.debug("Forecast fetch failed: %s", fe)
+
             return WeatherSnapshot(
                 temperature_c=d["main"]["temp"],
                 humidity_pct=d["main"]["humidity"],
                 rainfall_mm=d.get("rain", {}).get("1h", 0),
                 wind_speed_kmh=d["wind"]["speed"] * 3.6,
                 condition=d["weather"][0]["main"].lower(),
+                forecast_7day=forecast_7day,
             )
         except Exception as e:
-            logger.warning(f"Weather API failed, using dummy data: {e}")
+            logger.warning("Weather API failed, using dummy data: %s", e)
             return self._dummy_weather()

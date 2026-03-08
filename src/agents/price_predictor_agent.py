@@ -41,19 +41,161 @@ class PricePredictorAgent:
         """Return current price + 7-day and 30-day forecasts."""
         if settings.USE_DUMMY_DATA:
             return self._dummy_price_forecast(crop, mandi)
-        return self._fetch_enam_and_forecast(crop, mandi)
+        return self._forecast_from_db(crop, mandi)
+
+    def get_price_history(self, crop: str, mandi: str | None = None, days: int = 30) -> list:
+        """Return historical price records from DB."""
+        from src.database import SessionLocal
+        from src.repositories import get_price_history
+        db = SessionLocal()
+        try:
+            records = get_price_history(db, crop, mandi, days)
+            return [
+                {"crop": r.crop, "mandi": r.mandi, "price": r.price, "date": r.recorded_at.isoformat()}
+                for r in records
+            ]
+        finally:
+            db.close()
+
+    def _forecast_from_db(self, crop: str, mandi: str | None) -> PriceForecast:
+        """Build a forecast from historical DB prices."""
+        from src.database import SessionLocal
+        from src.repositories import get_price_history
+        db = SessionLocal()
+        try:
+            records_7d = get_price_history(db, crop, mandi, days=7)
+            records_30d = get_price_history(db, crop, mandi, days=30)
+            if not records_7d:
+                return self._dummy_price_forecast(crop, mandi)
+
+            current = records_7d[0].price
+            avg_7d = sum(r.price for r in records_7d) / len(records_7d)
+            avg_30d = sum(r.price for r in records_30d) / len(records_30d) if records_30d else current
+            prices = [r.price for r in records_30d] if records_30d else [current]
+
+            if avg_7d > current * 1.02:
+                trend = "rising"
+            elif avg_7d < current * 0.98:
+                trend = "falling"
+            else:
+                trend = "stable"
+
+            return PriceForecast(
+                crop=crop,
+                mandi=mandi or records_7d[0].mandi,
+                current_price=round(current, 0),
+                forecast_7day=round(avg_7d, 0),
+                forecast_30day=round(avg_30d, 0),
+                confidence_lower=round(min(prices) * 0.95, 0),
+                confidence_upper=round(max(prices) * 1.05, 0),
+                trend=trend,
+                factors=[{"factor": "historical_average", "impact": 0.0, "explanation": "Based on recent price history"}],
+            )
+        finally:
+            db.close()
 
     def recommend_decision(self, farmer_id: str, crop: str, quantity_quintals: float = 20.0) -> MarketDecision:
-        """Sell now / store / wait recommendation."""
+        """Sell now / store / wait recommendation based on real price trends."""
         if settings.USE_DUMMY_DATA:
             return self._dummy_market_decision(farmer_id, crop)
-        return self._dummy_market_decision(farmer_id, crop)
+        return self._recommend_from_db(farmer_id, crop, quantity_quintals)
 
-    def calculate_net_realization(self, quantity_quintals: float = 20.0) -> NetRealization:
+    def _recommend_from_db(self, farmer_id: str, crop: str, quantity_quintals: float) -> MarketDecision:
+        """Generate sell/store/wait decision from real DB price data."""
+        from src.database import SessionLocal
+        from src.repositories import get_price_history
+        db = SessionLocal()
+        try:
+            records_7d = get_price_history(db, crop, None, days=7)
+            records_30d = get_price_history(db, crop, None, days=30)
+            if not records_7d:
+                return self._dummy_market_decision(farmer_id, crop)
+
+            current = records_7d[0].price
+            avg_7d = sum(r.price for r in records_7d) / len(records_7d)
+            avg_30d = sum(r.price for r in records_30d) / len(records_30d) if records_30d else current
+            best_mandi = records_7d[0].mandi
+
+            # Find best mandi (highest recent price)
+            mandi_prices = {}
+            for r in records_7d:
+                if r.mandi not in mandi_prices or r.price > mandi_prices[r.mandi]:
+                    mandi_prices[r.mandi] = r.price
+            if mandi_prices:
+                best_mandi = max(mandi_prices, key=mandi_prices.get)
+                current = mandi_prices[best_mandi]
+
+            # Decision logic
+            if avg_7d > avg_30d * 1.05:
+                # Prices rising significantly
+                recommendation = "wait"
+                timing = "Prices are trending up — consider waiting 1-2 weeks"
+                risk = "medium — prices may reverse"
+            elif avg_7d < avg_30d * 0.95:
+                # Prices falling
+                recommendation = "sell_now"
+                timing = "Prices are declining — sell within this week"
+                risk = "low — avoid further price drops"
+            elif current > avg_30d * 1.02:
+                # Current price above average
+                recommendation = "sell_now"
+                timing = "Current price is above 30-day average — good time to sell"
+                risk = "low"
+            else:
+                recommendation = "store_2_weeks"
+                timing = "Prices stable — store for 2 weeks and monitor"
+                risk = "medium — storage costs apply"
+
+            net = self._calculate_real_net(current, quantity_quintals)
+            opportunity_cost = abs(current - avg_30d) * quantity_quintals
+
+            return MarketDecision(
+                recommendation=recommendation,
+                expected_net_realization=net.net_amount,
+                best_mandi=best_mandi,
+                timing=timing,
+                risk_assessment=risk,
+                opportunity_cost=round(opportunity_cost, 0),
+            )
+        except Exception as e:
+            logger.warning("Decision from DB failed: %s", e)
+            return self._dummy_market_decision(farmer_id, crop)
+        finally:
+            db.close()
+
+    def calculate_net_realization(self, quantity_quintals: float = 20.0, crop: str = "wheat") -> NetRealization:
         """Compute net income after transport, fees, and storage."""
         if settings.USE_DUMMY_DATA:
             return self._dummy_net_realization(quantity_quintals)
-        return self._dummy_net_realization(quantity_quintals)
+        return self._calculate_real_net_from_db(crop, quantity_quintals)
+
+    def _calculate_real_net(self, price_per_quintal: float, quantity: float) -> NetRealization:
+        """Calculate net realization from a given price."""
+        gross = price_per_quintal * quantity
+        transport = quantity * 50  # ~Rs 50/quintal transport
+        market_fee = gross * 0.02  # 2% APMC market fee
+        storage = quantity * 20  # ~Rs 20/quintal handling
+        net = gross - transport - market_fee - storage
+        return NetRealization(
+            gross_amount=round(gross, 0),
+            transport_cost=round(transport, 0),
+            market_fee=round(market_fee, 0),
+            storage_cost=round(storage, 0),
+            net_amount=round(net, 0),
+        )
+
+    def _calculate_real_net_from_db(self, crop: str, quantity: float) -> NetRealization:
+        """Calculate net realization using current DB prices."""
+        from src.database import SessionLocal
+        from src.repositories import get_latest_price
+        db = SessionLocal()
+        try:
+            record = get_latest_price(db, crop)
+            if record:
+                return self._calculate_real_net(record.price, quantity)
+            return self._dummy_net_realization(quantity)
+        finally:
+            db.close()
 
     # ── Agent interface (called by Supervisor) ───────────────────────────
 
@@ -140,16 +282,29 @@ class PricePredictorAgent:
         return "wheat"  # default fallback
 
     def _fetch_enam_and_forecast(self, crop: str, mandi: str | None) -> PriceForecast:
-        """Attempt to fetch real price data from e-NAM and produce a forecast.
-        Falls back to dummy data on failure.
-        """
+        """Fetch real price data using the price fetcher chain, then forecast."""
         try:
-            import requests
-            # e-NAM doesn't have a stable public JSON API; this is illustrative.
-            # In production, scrape or use government data.gov.in datasets.
-            logger.info(f"Fetching e-NAM data for {crop}")
-            # ... (real implementation would go here)
-            raise NotImplementedError("e-NAM scraper not yet implemented")
+            from src.data_fetchers.mandi_prices import get_price_fetcher
+            fetcher = get_price_fetcher()
+            entries = fetcher.fetch_prices([crop], state="Maharashtra", days_back=7)
+            if entries:
+                current = entries[0].price
+                avg = sum(e.price for e in entries) / len(entries)
+                prices = [e.price for e in entries]
+                target_mandi = mandi or entries[0].mandi
+
+                trend = "rising" if avg > current * 1.02 else ("falling" if avg < current * 0.98 else "stable")
+                return PriceForecast(
+                    crop=crop,
+                    mandi=target_mandi,
+                    current_price=round(current, 0),
+                    forecast_7day=round(avg, 0),
+                    forecast_30day=round(avg * 1.02, 0),
+                    confidence_lower=round(min(prices) * 0.95, 0),
+                    confidence_upper=round(max(prices) * 1.05, 0),
+                    trend=trend,
+                    factors=[{"factor": "real_market_data", "impact": 0.0, "explanation": "Based on live mandi prices"}],
+                )
         except Exception as e:
-            logger.warning(f"e-NAM fetch failed, using dummy data: {e}")
-            return self._dummy_price_forecast(crop, mandi)
+            logger.warning("Real price fetch failed: %s", e)
+        return self._forecast_from_db(crop, mandi)

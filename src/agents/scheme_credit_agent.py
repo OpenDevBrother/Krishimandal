@@ -40,13 +40,54 @@ class SchemeCreditAgent:
         """Return government schemes the farmer is eligible for."""
         if settings.USE_DUMMY_DATA:
             return self._dummy_scheme_matches()
-        return self._dummy_scheme_matches()
+        return self._match_schemes_db(farmer_id)
+
+    def _match_schemes_db(self, farmer_id: str) -> List[SchemeMatch]:
+        """Match schemes from database with real eligibility scoring."""
+        from src.database import SessionLocal
+        from src.repositories import get_all_schemes, get_farm_by_farmer, get_farmer, scheme_to_match
+        db = SessionLocal()
+        try:
+            schemes = get_all_schemes(db)
+            farmer = get_farmer(db, farmer_id)
+            farm = get_farm_by_farmer(db, farmer_id)
+
+            if not farmer or not farm:
+                return [scheme_to_match(s) for s in schemes]
+
+            # Build farmer profile for eligibility matching
+            farmer_profile = {
+                "land_size_ha": farm.area_hectares,
+                "state": "Maharashtra",  # Derived from location in future
+                "category": "general",  # Would come from farmer profile
+                "age": 35,  # Would come from farmer profile
+            }
+
+            return [
+                scheme_to_match(s, farmer_profile=farmer_profile)
+                for s in schemes
+            ]
+        finally:
+            db.close()
 
     def compute_credit_score(self, farmer_id: str) -> CreditScore:
         """Calculate alternative credit score based on farm activity."""
         if settings.USE_DUMMY_DATA:
             return self._dummy_credit_score(farmer_id)
-        return self._dummy_credit_score(farmer_id)
+        return self._compute_credit_db(farmer_id)
+
+    def _compute_credit_db(self, farmer_id: str) -> CreditScore:
+        """Fetch or compute credit score from database."""
+        from src.database import SessionLocal
+        from src.repositories import credit_record_to_pydantic, get_latest_credit_score
+        db = SessionLocal()
+        try:
+            record = get_latest_credit_score(db, farmer_id)
+            if record:
+                return credit_record_to_pydantic(record)
+            return self._dummy_credit_score(farmer_id)
+        finally:
+            db.close()
 
     def match_lenders(self, farmer_id: str) -> List[LenderMatch]:
         """Find suitable lenders for the farmer's credit profile."""
@@ -77,6 +118,32 @@ class SchemeCreditAgent:
 
     def handle_query(self, query: str, farmer_id: str, **ctx) -> AgentResponse:
         query_lower = query.lower()
+
+        # Application listing
+        if any(w in query_lower for w in ["apply", "application", "aavedan", "आवेदन"]):
+            from src.database import SessionLocal
+            from src.repositories import get_applications_by_farmer, application_to_pydantic
+            db = SessionLocal()
+            try:
+                apps = get_applications_by_farmer(db, farmer_id)
+                if not apps:
+                    return AgentResponse(
+                        agent_name=self.NAME,
+                        response_text="You have no scheme applications yet. Use the scheme list to find eligible schemes and apply.",
+                        confidence=0.85,
+                    )
+                lines = []
+                for a in apps:
+                    data = application_to_pydantic(a)
+                    lines.append(f"📋 {data['scheme_name']} — Status: {data['status']}, Subsidy: ₹{data['estimated_subsidy_inr']:,.0f}")
+                return AgentResponse(
+                    agent_name=self.NAME,
+                    response_text=f"Your applications ({len(apps)}):\n" + "\n".join(lines),
+                    data={"applications": [application_to_pydantic(a) for a in apps]},
+                    confidence=0.85,
+                )
+            finally:
+                db.close()
 
         # Scheme matching
         if any(w in query_lower for w in ["scheme", "yojana", "योजना", "subsidy", "benefit", "सरकारी"]):

@@ -175,7 +175,7 @@ def dummy_net_realization(quantity_quintals: float = 20.0) -> NetRealization:
 
 def dummy_scheme_matches(farmer_profile: FarmProfile | None = None) -> List[SchemeMatch]:
     matches = []
-    for s in random.sample(SCHEMES, k=min(5, len(SCHEMES))):
+    for s in SCHEMES:
         matches.append(
             SchemeMatch(
                 scheme_id=s["id"],

@@ -14,6 +14,12 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
+from src.events import (
+    HARVEST_PREDICTED,
+    HEALTH_DECLINED,
+    PEST_DETECTED,
+    event_bus,
+)
 from src.agents.crop_management_agent import CropManagementAgent
 from src.agents.digital_twin_agent import DigitalTwinAgent
 from src.agents.learning_platform_agent import LearningPlatformAgent
@@ -36,6 +42,8 @@ _ROUTE_MAP: Dict[str, List[str]] = {
         "farm", "khet", "खेत", "profile", "weather", "mausam", "मौसम",
         "harvest", "katai", "काटना", "yield", "scenario", "simulate",
         "alert", "risk", "danger", "खतरा", "overview", "status",
+        "inventory", "stock", "saman", "सामान", "beej", "बीज",
+        "notification", "suchna", "सूचना", "unread",
     ],
     "crop_management": [
         "health", "crop", "fasal", "फसल", "pest", "keet", "कीट",
@@ -53,6 +61,7 @@ _ROUTE_MAP: Dict[str, List[str]] = {
         "सरकारी", "credit", "loan", "rin", "ऋण", "bank", "document",
         "upload", "dastaawaiz", "दस्तावेज़", "pm-kisan", "pmfby",
         "kcc", "insurance",
+        "apply", "application", "aavedan", "आवेदन",
     ],
     "supply_chain": [
         "logistics", "transport", "truck", "storage", "godam", "गोदाम",
@@ -85,6 +94,7 @@ class SupervisorOrchestrator:
             "learning_platform": LearningPlatformAgent(),
         }
         self.llm = get_llm()
+        self.event_bus = event_bus
         logger.info(
             "SupervisorOrchestrator initialised with %d sub-agents (LLM=%s)",
             len(self.agents),
@@ -138,6 +148,9 @@ class SupervisorOrchestrator:
 
         # Step 3 — Synthesise final response (via Groq LLM if available)
         final_response = self._synthesise(query, agent_responses, language)
+
+        # Step 4 — Fire cross-agent events
+        self._check_and_fire_events(agent_responses, farmer_id)
 
         elapsed_ms = int((time.time() - start) * 1000)
 
@@ -252,6 +265,35 @@ class SupervisorOrchestrator:
 
         header = "Here's a comprehensive answer combining insights from multiple modules:\n\n"
         return header + "\n\n".join(parts)
+
+    # ── Event firing ─────────────────────────────────────────────────────
+
+    def _check_and_fire_events(
+        self, responses: List[AgentResponse], farmer_id: str
+    ):
+        """Check agent responses and fire cross-agent events when appropriate."""
+        for r in responses:
+            # Harvest prediction → trigger supply chain + price forecast
+            if r.agent_name == "digital_twin" and r.data.get("days_to_harvest", 999) <= 14:
+                self.event_bus.publish(HARVEST_PREDICTED, {
+                    "farmer_id": farmer_id,
+                    "crop": r.data.get("crop", ""),
+                    "days_to_harvest": r.data.get("days_to_harvest"),
+                })
+
+            # Pest detected → trigger learning content
+            if r.agent_name == "crop_management" and "pest" in r.response_text.lower():
+                self.event_bus.publish(PEST_DETECTED, {
+                    "farmer_id": farmer_id,
+                    "response": r.response_text[:200],
+                })
+
+            # Health declined
+            if r.agent_name == "crop_management" and r.data.get("health_score", 100) < 60:
+                self.event_bus.publish(HEALTH_DECLINED, {
+                    "farmer_id": farmer_id,
+                    "health_score": r.data.get("health_score"),
+                })
 
     # ── Convenience ──────────────────────────────────────────────────────
 

@@ -254,3 +254,172 @@ class OrchestratorResult(BaseModel):
     final_response: str
     agent_responses: List[AgentResponse] = []
     processing_time_ms: int = 0
+
+
+# ── CRUD Request / Response models ──────────────────────────────────────────
+
+class CreateFarmRequest(BaseModel):
+    farmer_id: str
+    farmer_name: str
+    phone: str
+    preferred_language: str = "hi-IN"
+    location_lat: float = 19.076
+    location_lng: float = 72.877
+    area_hectares: float
+    soil_type: str = "black"
+    irrigation_type: str = "rainfed"
+
+
+class UpdateFarmRequest(BaseModel):
+    farmer_name: Optional[str] = None
+    phone: Optional[str] = None
+    preferred_language: Optional[str] = None
+    area_hectares: Optional[float] = None
+    soil_type: Optional[str] = None
+    irrigation_type: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
+
+
+class AddCropRequest(BaseModel):
+    crop_type: str
+    area_hectares: float
+    variety: str = ""
+    planting_date: Optional[date] = None
+    expected_harvest: Optional[date] = None
+    growth_stage: str = "germination"
+
+
+class SimulateRequest(BaseModel):
+    scenario: str = "drought"  # drought | pest_outbreak | early_harvest | alternative_crop
+
+
+class PriceHistoryItem(BaseModel):
+    crop: str
+    mandi: str
+    price: float
+    date: str
+
+
+class ErrorResponse(BaseModel):
+    detail: str
+    request_id: Optional[str] = None
+
+
+# ── Application Models ─────────────────────────────────────────────────────
+
+class ApplicationStatus(str, Enum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    UNDER_REVIEW = "under_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    WITHDRAWN = "withdrawn"
+
+
+class DocumentChecklistItem(BaseModel):
+    name: str
+    uploaded: bool = False
+    file_path: str = ""
+
+
+class CreateApplicationRequest(BaseModel):
+    scheme_id: str
+    submit_directly: bool = False
+    farmer_notes: str = ""
+
+
+class UpdateApplicationRequest(BaseModel):
+    action: str = "submit"  # submit | update
+    farmer_notes: Optional[str] = None
+    documents_checklist: Optional[List[DocumentChecklistItem]] = None
+
+
+class ApplicationResponse(BaseModel):
+    id: int
+    farmer_id: str
+    scheme_id: str
+    scheme_name: str
+    status: str
+    applied_at: Optional[str] = None
+    submitted_at: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    documents_checklist: List[DocumentChecklistItem] = []
+    estimated_subsidy_inr: float = 0.0
+    farmer_notes: str = ""
+    reviewer_notes: str = ""
+
+
+# ── Inventory Models ───────────────────────────────────────────────────────
+
+class CreateInventoryRequest(BaseModel):
+    name: str
+    category: str  # seed|fertilizer|pesticide|harvest|equipment
+    quantity: float = 0.0
+    unit: str = "kg"
+    alert_threshold: float = 0.0
+    purchase_price: float = 0.0
+    purchase_date: Optional[date] = None
+    expiry_date: Optional[date] = None
+    notes: str = ""
+
+
+class UpdateInventoryRequest(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    quantity: Optional[float] = None
+    unit: Optional[str] = None
+    alert_threshold: Optional[float] = None
+    purchase_price: Optional[float] = None
+    purchase_date: Optional[date] = None
+    expiry_date: Optional[date] = None
+    notes: Optional[str] = None
+
+
+class AdjustStockRequest(BaseModel):
+    adjustment: float
+    reason: str = ""
+
+
+class InventoryItemResponse(BaseModel):
+    id: int
+    farmer_id: str
+    name: str
+    category: str
+    quantity: float
+    unit: str
+    alert_threshold: float
+    purchase_price: float
+    purchase_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    notes: str
+    is_low_stock: bool
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+# ── Notification Models ────────────────────────────────────────────────────
+
+class NotificationType(str, Enum):
+    SCHEME_DEADLINE = "scheme_deadline"
+    PRICE_ALERT = "price_alert"
+    PEST_WARNING = "pest_warning"
+    APPLICATION_UPDATE = "application_update"
+    INVENTORY_ALERT = "inventory_alert"
+    WEATHER_ALERT = "weather_alert"
+    GENERAL = "general"
+
+
+class NotificationResponse(BaseModel):
+    id: int
+    farmer_id: str
+    type: str
+    title: str
+    message: str
+    channel: str
+    is_read: bool
+    related_entity_type: Optional[str] = None
+    related_entity_id: Optional[str] = None
+    created_at: Optional[str] = None
+    read_at: Optional[str] = None

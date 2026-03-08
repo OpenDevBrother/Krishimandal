@@ -55,6 +55,27 @@ class Settings:
     AGRISTACK_API_KEY: str = os.getenv("AGRISTACK_API_KEY", "")
     AGRISTACK_BASE_URL: str = os.getenv("AGRISTACK_BASE_URL", "https://api.agristack.gov.in/v1")
 
+    # ── Real Data Toggles ─────────────────────────────────────────────
+    USE_REAL_WEATHER: bool = os.getenv("USE_REAL_WEATHER", "false").lower() == "true"
+    CEDA_API_BASE_URL: str = os.getenv("CEDA_API_BASE_URL", "https://agmarknet.ceda.ashoka.edu.in")
+    AGMARKNET_SCRAPE_ENABLED: bool = os.getenv("AGMARKNET_SCRAPE_ENABLED", "false").lower() == "true"
+
+    # ── Scheduler ──────────────────────────────────────────────────────
+    SCHEDULER_ENABLED: bool = os.getenv("SCHEDULER_ENABLED", "false").lower() == "true"
+
+    # ── Database ───────────────────────────────────────────────────────
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./krishimandal.db")
+
+    # ── Auth & Rate Limiting ──────────────────────────────────────────
+    API_KEY_ENABLED: bool = os.getenv("API_KEY_ENABLED", "false").lower() == "true"
+    API_KEYS: str = os.getenv("API_KEYS", "krishimandal-dev-key")
+    RATE_LIMIT_PER_MINUTE: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "100"))
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
+
+    # ── File Uploads ─────────────────────────────────────────────────
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
+    MAX_UPLOAD_SIZE_MB: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
+
     # ── Application ─────────────────────────────────────────────────────
     APP_ENV: str = os.getenv("APP_ENV", "development")
     APP_PORT: int = int(os.getenv("APP_PORT", "8000"))
