@@ -1,0 +1,19 @@
+boto3>=1.35.0
+botocore>=1.35.0
+python-dotenv>=1.0.0
+fastapi>=0.115.0
+uvicorn>=0.32.0
+pydantic>=2.9.0
+httpx>=0.27.0
+requests>=2.32.0
+redis>=5.0.0
+psycopg2-binary>=2.9.0
+sqlalchemy>=2.0.0
+pandas>=2.2.0
+numpy>=1.26.0
+# --- LLM (Groq) ---
+groq>=0.9.0
+# --- Embeddings (Google Gemini) ---
+google-generativeai>=0.8.0
+# --- Vector DB (Pinecone) ---
+pinecone-client>=5.0.0
