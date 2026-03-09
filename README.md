@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="website/public/krishimandal-logo.png" alt="KrishiMandal Logo" width="80" />
-</p>
+
 
 <h1 align="center">KrishiMandal</h1>
 
