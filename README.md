@@ -359,26 +359,7 @@ AIB/
 └── Aws Imgs/             # AWS console screenshots
 ```
 
----
 
-## App Screenshots
-
-> *Add your app screenshots here*
-
-| Screen | Screenshot |
-|--------|-----------|
-| Dashboard | ![Dashboard](#) |
-| AI Chatbot | ![Chatbot](#) |
-| Voice Assistant | ![Voice](#) |
-| Digital Twin | ![Digital Twin](#) |
-| Schemes | ![Schemes](#) |
-| Application Form | ![Application](#) |
-| Inventory | ![Inventory](#) |
-| Learning & RAG | ![Learning](#) |
-| Profile & WhatsApp | ![Profile](#) |
-| Mobile App | ![Mobile](#) |
-
----
 
 ## Integration Partners
 
@@ -394,6 +375,4 @@ AIB/
 
 ---
 
-<p align="center">
-  Made with love using <strong>Kiro</strong>
-</p>
+>
