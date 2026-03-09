@@ -1,13 +1,17 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, FileText, Package, Bell, User } from "lucide-react";
+import { Home, FileText, Package, Bell, User, BookOpen } from "lucide-react";
 import { apiClient } from "../services/api";
 import { colors } from "../constants/theme";
 import Header from "./Header";
+import Chatbot from "./Chatbot";
+import DigitalTwinSidebar from "./DigitalTwinSidebar";
+import VoiceAssistant from "./VoiceAssistant";
 
 const NAV_ITEMS = [
   { path: "/", label: "Home", icon: Home },
   { path: "/schemes", label: "Schemes", icon: FileText },
+  { path: "/learn", label: "Learn", icon: BookOpen },
   { path: "/inventory", label: "Inventory", icon: Package },
   { path: "/notifications", label: "Alerts", icon: Bell },
   { path: "/profile", label: "Profile", icon: User },
@@ -103,6 +107,9 @@ export default function Layout({ children }: { children: ReactNode }) {
           })}
         </nav>
       </div>
+      <VoiceAssistant />
+      <Chatbot />
+      <DigitalTwinSidebar />
     </div>
   );
 }

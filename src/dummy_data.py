@@ -322,38 +322,65 @@ def dummy_market_options(crop: str = "wheat") -> List[MarketOption]:
 
 # ── Learning data ───────────────────────────────────────────────────────────
 
+_REAL_CONTENT_URLS: Dict[str, List[Dict[str, Any]]] = {
+    "pest-control": [
+        {"type": "text", "title": "ICAR: Integrated Pest Management Guide", "url": "https://icar.org.in/files/IPM-Package-of-Practices.pdf", "mins": 12},
+        {"type": "text", "title": "Pest Surveillance & Management Advisory", "url": "https://ppqs.gov.in/sites/default/files/ipm_golden_book.pdf", "mins": 15},
+        {"type": "text", "title": "Bio-Pesticides in Indian Agriculture", "url": "https://vikaspedia.in/agriculture/crop-production/integrated-pest-managment", "mins": 10},
+    ],
+    "organic-farming": [
+        {"type": "text", "title": "National Programme for Organic Production", "url": "https://apeda.gov.in/apedawebsite/organic/organic_contents/national_programme.htm", "mins": 10},
+        {"type": "text", "title": "Organic Farming: ICAR Handbook", "url": "https://vikaspedia.in/agriculture/policies-and-schemes/crops-related/organic-farming", "mins": 12},
+        {"type": "text", "title": "Paramparagat Krishi Vikas Yojana Guide", "url": "https://pgsindia-ncof.gov.in/pkvy/Introduction.aspx", "mins": 8},
+    ],
+    "drip-irrigation": [
+        {"type": "text", "title": "Micro Irrigation Guide — Ministry of Agriculture", "url": "https://pmksy.gov.in/microirrigation/Archive/GuidelinesforMI.pdf", "mins": 15},
+        {"type": "text", "title": "PMKSY: Per Drop More Crop", "url": "https://pmksy.gov.in/", "mins": 10},
+        {"type": "text", "title": "Drip Irrigation Best Practices — Vikaspedia", "url": "https://vikaspedia.in/agriculture/farm-based-enterprises/drip-irrigation", "mins": 8},
+    ],
+    "soil-health": [
+        {"type": "text", "title": "Soil Health Card Scheme Portal", "url": "https://soilhealth.dac.gov.in/", "mins": 10},
+        {"type": "text", "title": "Soil Testing & Nutrient Management", "url": "https://vikaspedia.in/agriculture/soil/soil-health", "mins": 12},
+        {"type": "text", "title": "ICAR: Soil Fertility & Nutrient Management", "url": "https://icar.org.in/content/soil-science", "mins": 15},
+    ],
+    "market-linkage": [
+        {"type": "text", "title": "eNAM — National Agriculture Market", "url": "https://enam.gov.in/web/", "mins": 10},
+        {"type": "text", "title": "Agmarknet: Market Prices & Arrivals", "url": "https://agmarknet.gov.in/", "mins": 8},
+        {"type": "text", "title": "FPO Linkage & Direct Marketing Guide", "url": "https://vikaspedia.in/agriculture/market-information/marketing-of-agricultural-produce", "mins": 12},
+    ],
+    "post-harvest": [
+        {"type": "text", "title": "Post-Harvest Management — ICAR", "url": "https://vikaspedia.in/agriculture/post-harvest-technologies", "mins": 12},
+        {"type": "text", "title": "Cold Chain Infrastructure & Storage", "url": "https://midh.gov.in/cold_chain.html", "mins": 10},
+        {"type": "text", "title": "Grading & Standardization of Produce", "url": "https://agmarknet.gov.in/GradingStd.aspx", "mins": 8},
+    ],
+    "seed-selection": [
+        {"type": "text", "title": "Seed Quality & Selection — Vikaspedia", "url": "https://vikaspedia.in/agriculture/crop-production/seeds", "mins": 10},
+        {"type": "text", "title": "National Seeds Corporation — Varieties", "url": "https://www.indiaseeds.com/", "mins": 8},
+        {"type": "text", "title": "ICAR Crop Varieties Released", "url": "https://icar.org.in/content/crop-science", "mins": 12},
+    ],
+    "water-management": [
+        {"type": "text", "title": "Water Management in Agriculture", "url": "https://vikaspedia.in/agriculture/irrigation/water-management", "mins": 12},
+        {"type": "text", "title": "PMKSY: Watershed Development", "url": "https://pmksy.gov.in/", "mins": 10},
+        {"type": "text", "title": "Rainwater Harvesting Techniques", "url": "https://vikaspedia.in/energy/environment/water-harvesting", "mins": 8},
+    ],
+}
+
+
 def dummy_learning_content(topic: str | None = None, language: str = "hi-IN") -> List[LearningContent]:
     topic = topic or random.choice(LEARNING_TOPICS)
-    contents = [
-        LearningContent(
-            content_id=f"LC-{random.randint(1000,9999)}",
-            title=f"{topic.replace('-', ' ').title()} — Best Practices",
-            content_type="video",
-            language=language,
-            topic=topic,
-            url=f"https://cdn.krishimandal.com/learning/{topic}/video_01.mp4",
-            duration_minutes=random.randint(5, 15),
-            relevance_score=round(random.uniform(0.7, 0.98), 2),
-        ),
-        LearningContent(
-            content_id=f"LC-{random.randint(1000,9999)}",
-            title=f"ICAR Bulletin: {topic.replace('-', ' ').title()}",
-            content_type="text",
-            language=language,
-            topic=topic,
-            url=f"https://cdn.krishimandal.com/learning/{topic}/icar_bulletin.pdf",
-            duration_minutes=10,
-            relevance_score=round(random.uniform(0.6, 0.9), 2),
-        ),
-        LearningContent(
-            content_id=f"LC-{random.randint(1000,9999)}",
-            title=f"Audio Guide: {topic.replace('-', ' ').title()}",
-            content_type="audio",
-            language=language,
-            topic=topic,
-            url=f"https://cdn.krishimandal.com/learning/{topic}/audio_guide.mp3",
-            duration_minutes=random.randint(3, 8),
-            relevance_score=round(random.uniform(0.65, 0.88), 2),
-        ),
-    ]
+    real_items = _REAL_CONTENT_URLS.get(topic, _REAL_CONTENT_URLS["soil-health"])
+    contents = []
+    for item in real_items:
+        contents.append(
+            LearningContent(
+                content_id=f"LC-{random.randint(1000,9999)}",
+                title=item["title"],
+                content_type=item["type"],
+                language=language,
+                topic=topic,
+                url=item["url"],
+                duration_minutes=item["mins"],
+                relevance_score=round(random.uniform(0.7, 0.98), 2),
+            )
+        )
     return contents

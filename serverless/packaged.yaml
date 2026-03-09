@@ -1,0 +1,681 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: KrishiMandal - Serverless Multi-Agent Farm Intelligence Platform
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        TABLE_NAME:
+          Ref: FarmTable
+        EVENTS_BUS_NAME:
+          Ref: EventBus
+        BEDROCK_MODEL_ID:
+          Ref: BedrockModelId
+        BEDROCK_EMBEDDING_MODEL_ID:
+          Ref: BedrockEmbeddingModelId
+        BEDROCK_GUARDRAIL_ID:
+          Ref: BedrockGuardrailId
+        PINECONE_API_KEY:
+          Ref: PineconeApiKey
+        PINECONE_INDEX:
+          Ref: PineconeIndex
+        OPENWEATHER_API_KEY:
+          Ref: OpenWeatherApiKey
+        S3_BUCKET:
+          Ref: DataBucket
+        EC2_FALLBACK_URL:
+          Ref: EC2FallbackUrl
+        TWILIO_ACCOUNT_SID:
+          Ref: TwilioAccountSid
+        TWILIO_AUTH_TOKEN:
+          Ref: TwilioAuthToken
+        TWILIO_WHATSAPP_NUMBER:
+          Ref: TwilioWhatsAppNumber
+    Layers:
+    - Ref: CommonLayer
+Parameters:
+  BedrockModelId:
+    Type: String
+    Default: us.amazon.nova-pro-v1:0
+  BedrockEmbeddingModelId:
+    Type: String
+    Default: amazon.titan-embed-text-v2:0
+  BedrockGuardrailId:
+    Type: String
+    Default: ''
+  PineconeApiKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+  PineconeIndex:
+    Type: String
+    Default: krishimandal-knowledge
+  OpenWeatherApiKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+  EC2FallbackUrl:
+    Type: String
+    Default: http://100.27.155.251:8000
+  SarvamApiKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+  TwilioAccountSid:
+    Type: String
+    Default: ''
+    NoEcho: true
+  TwilioAuthToken:
+    Type: String
+    Default: ''
+    NoEcho: true
+  TwilioWhatsAppNumber:
+    Type: String
+    Default: ''
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowOrigin: "'*'"
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-API-Key,Authorization'"
+      Auth:
+        ApiKeyRequired: false
+  FarmTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: krishimandal-farm
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: PK
+        AttributeType: S
+      - AttributeName: SK
+        AttributeType: S
+      - AttributeName: GSI1PK
+        AttributeType: S
+      - AttributeName: GSI1SK
+        AttributeType: S
+      KeySchema:
+      - AttributeName: PK
+        KeyType: HASH
+      - AttributeName: SK
+        KeyType: RANGE
+      GlobalSecondaryIndexes:
+      - IndexName: GSI1
+        KeySchema:
+        - AttributeName: GSI1PK
+          KeyType: HASH
+        - AttributeName: GSI1SK
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: krishimandal-data-${AWS::AccountId}
+  EventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: krishimandal-events
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: krishimandal-common
+      ContentUri: s3://krishimandal-data-116981771682/deploy/bb716571d8bc5282c207fca8f498f54a
+      CompatibleRuntimes:
+      - python3.12
+    Metadata:
+      BuildMethod: python3.12
+  QueryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-query
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/8ff4f650772d77cdc244cdff318ea569
+      Timeout: 60
+      MemorySize: 1024
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      - Statement:
+        - Effect: Allow
+          Action:
+          - bedrock:InvokeModel
+          - bedrock:InvokeModelWithResponseStream
+          - bedrock:GetInferenceProfile
+          - bedrock:ListInferenceProfiles
+          - bedrock:GetFoundationModel
+          - bedrock:ListFoundationModels
+          Resource: '*'
+        - Effect: Allow
+          Action:
+          - aws-marketplace:Subscribe
+          - aws-marketplace:Unsubscribe
+          - aws-marketplace:ViewSubscriptions
+          Resource: '*'
+      - EventBridgePutEventsPolicy:
+          EventBusName:
+            Ref: EventBus
+      Events:
+        PostQuery:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /query
+            Method: POST
+  FarmFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-farm
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/697f54e8c2dccf77653bc34d713eff82
+      Timeout: 30
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      - Statement:
+        - Effect: Allow
+          Action: bedrock:InvokeModel
+          Resource: '*'
+      Events:
+        GetFarm:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}
+            Method: GET
+        UpdateFarm:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}
+            Method: PUT
+        GetFarmState:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/state
+            Method: GET
+        GetFarmHealth:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/health
+            Method: GET
+        PostSimulate:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/simulate
+            Method: POST
+  SchemesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-schemes
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/b2f256dcea4c951f42b7ad77bb03de9c
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      Events:
+        GetSchemes:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/schemes
+            Method: GET
+  ApplicationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-applications
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/e279354fc033d70af31ddddbc9856083
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      - EventBridgePutEventsPolicy:
+          EventBusName:
+            Ref: EventBus
+      Events:
+        GetApplications:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/applications
+            Method: GET
+        PostApplication:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/applications
+            Method: POST
+  InventoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-inventory
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/a56c57bb8b4627e92395e2b3cfe71a82
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      - EventBridgePutEventsPolicy:
+          EventBusName:
+            Ref: EventBus
+      Events:
+        GetInventory:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/inventory
+            Method: GET
+        PostInventory:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/inventory
+            Method: POST
+        GetInventoryItem:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/inventory/{item_id}
+            Method: GET
+        PutInventoryItem:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/inventory/{item_id}
+            Method: PUT
+        DeleteInventoryItem:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/inventory/{item_id}
+            Method: DELETE
+        AdjustStock:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/inventory/{item_id}/adjust
+            Method: POST
+        GetAlerts:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/inventory/alerts
+            Method: GET
+  NotificationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-notifications
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/0e173a69869af441035af6b966108c3a
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      Events:
+        GetNotifications:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/notifications
+            Method: GET
+        GetUnreadCount:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/notifications/unread-count
+            Method: GET
+        MarkRead:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/notifications/{notif_id}/read
+            Method: PUT
+        MarkAllRead:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/notifications/read-all
+            Method: PUT
+  PricesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-prices
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/31d1eb9e5d18624fd88160498623b58c
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      - Statement:
+        - Effect: Allow
+          Action: bedrock:InvokeModel
+          Resource: '*'
+      Events:
+        GetPrice:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /price/{crop}
+            Method: GET
+  SupplyChainFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-supply-chain
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/26d445144b3e80676e752146b8c11f87
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      - Statement:
+        - Effect: Allow
+          Action: bedrock:InvokeModel
+          Resource: '*'
+      Events:
+        HarvestPlan:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /farm/{farmer_id}/harvest-plan
+            Method: GET
+  LearningFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-learning
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/9a25001ead50b99e139ce7263400fa68
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      - S3CrudPolicy:
+          BucketName:
+            Ref: DataBucket
+      - Statement:
+        - Effect: Allow
+          Action: bedrock:InvokeModel
+          Resource: '*'
+      Events:
+        GetContent:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /learning/content
+            Method: GET
+  RagFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-rag
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/d5a83b97f0ecfeca70f7e593f1eba67d
+      Timeout: 60
+      MemorySize: 1024
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      - Statement:
+        - Effect: Allow
+          Action: bedrock:InvokeModel
+          Resource: '*'
+      - S3CrudPolicy:
+          BucketName:
+            Ref: DataBucket
+      Events:
+        RagAsk:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /rag/ask
+            Method: POST
+  YouTubeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-youtube
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/6c22909285988dc4dfe842647b4b21b7
+      Timeout: 15
+      Policies: []
+      Events:
+        YouTubeSearch:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /youtube/search
+            Method: GET
+  DocumentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-documents
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/7b66cdcb59095edfb970eca842f30321
+      Timeout: 30
+      Policies:
+      - Statement:
+        - Effect: Allow
+          Action: bedrock:InvokeModel
+          Resource: '*'
+      Events:
+        OcrScan:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /documents/ocr
+            Method: POST
+  VoiceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-voice
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/ce62dd105e32d6e3cfb5be6924fdf8b0
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          SARVAM_API_KEY:
+            Ref: SarvamApiKey
+      Policies: []
+      Events:
+        VoiceSTT:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /voice/stt
+            Method: POST
+        VoiceTTS:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /voice/tts
+            Method: POST
+  WhatsAppFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-whatsapp
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/7ee611daa95667c7785122bcee7edd9a
+      Timeout: 30
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      Events:
+        SendMessage:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /whatsapp/send
+            Method: POST
+        OptIn:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /whatsapp/opt-in
+            Method: POST
+        Digest:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /whatsapp/digest
+            Method: POST
+        DailyDigest:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 1 * * ? *)
+            Description: 6:30 AM IST - Daily WhatsApp digest
+  ScheduledFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: krishimandal-scheduled
+      Handler: handler.handler
+      CodeUri: s3://krishimandal-data-116981771682/deploy/704ecc1ce26a05db880f2eaa1f11b409
+      Timeout: 300
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: FarmTable
+      - EventBridgePutEventsPolicy:
+          EventBusName:
+            Ref: EventBus
+      Events:
+        MorningRefresh:
+          Type: Schedule
+          Properties:
+            Schedule: cron(30 0 * * ? *)
+            Description: 6 AM IST - Refresh prices and check deadlines
+        WeatherRefresh:
+          Type: Schedule
+          Properties:
+            Schedule: rate(3 hours)
+            Description: Refresh weather for all farms
+  NotificationRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName:
+        Ref: EventBus
+      EventPattern:
+        source:
+        - krishimandal
+        detail-type:
+        - HARVEST_PREDICTED
+        - PRICE_ALERT
+        - PEST_DETECTED
+        - HEALTH_DECLINED
+        - SCHEME_DEADLINE
+        - APPLICATION_STATUS_CHANGED
+        - INVENTORY_LOW_STOCK
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - NotificationsFunction
+          - Arn
+        Id: NotificationTarget
+  NotificationRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: NotificationsFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - NotificationRule
+        - Arn
+  WhatsAppAlertRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName:
+        Ref: EventBus
+      EventPattern:
+        source:
+        - krishimandal
+        detail-type:
+        - INVENTORY_LOW_STOCK
+        - HEALTH_DECLINED
+        - PEST_DETECTED
+        - PRICE_ALERT
+        - HARVEST_PREDICTED
+        - SCHEME_DEADLINE
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - WhatsAppFunction
+          - Arn
+        Id: WhatsAppAlertTarget
+  WhatsAppAlertRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: WhatsAppFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - WhatsAppAlertRule
+        - Arn
+Outputs:
+  ApiUrl:
+    Description: API Gateway URL
+    Value:
+      Fn::Sub: https://${Api}.execute-api.${AWS::Region}.amazonaws.com/prod
+  FarmTableName:
+    Description: DynamoDB Table
+    Value:
+      Ref: FarmTable
+  DataBucketName:
+    Description: S3 Data Bucket
+    Value:
+      Ref: DataBucket
+  EventBusName:
+    Description: EventBridge Bus
+    Value:
+      Ref: EventBus
+  EC2FallbackUrl:
+    Description: EC2 fallback URL (kept as backup)
+    Value:
+      Ref: EC2FallbackUrl

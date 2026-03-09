@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, MapPin, Sprout, Save, LogOut } from "lucide-react";
+import { User, MapPin, Sprout, Save, LogOut, MessageCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../services/authContext";
 import { apiClient } from "../services/api";
@@ -24,6 +24,8 @@ export default function ProfilePage() {
   const { farmer, logout, updateFarmer } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [form, setForm] = useState({
     name: "", email: "", state: "", district: "",
     village: "", land_size: "0", crop_type: "", farm_income: "0",
@@ -40,6 +42,7 @@ export default function ProfilePage() {
         village: data.village || "", land_size: (data.land_size || 0).toString(),
         crop_type: data.crop_type || "", farm_income: (data.farm_income || 0).toString(),
       });
+      setWhatsappEnabled(!!data.whatsapp_enabled);
     } catch {
       if (farmer) {
         setForm({
@@ -72,12 +75,36 @@ export default function ProfilePage() {
     finally { setLoading(false); }
   };
 
+  const toggleWhatsApp = async () => {
+    setWhatsappLoading(true);
+    const newValue = !whatsappEnabled;
+    try {
+      const farmerId = localStorage.getItem("farmer_id") || "F1001";
+      await apiClient.post("/whatsapp/opt-in", {
+        farmer_id: farmerId,
+        enabled: newValue,
+      });
+      setWhatsappEnabled(newValue);
+      toast.success(
+        newValue
+          ? "WhatsApp notifications enabled!"
+          : "WhatsApp notifications disabled"
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update WhatsApp settings");
+    } finally {
+      setWhatsappLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     toast.success("Logged out successfully");
   };
 
   if (fetching) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-3 border-t-transparent rounded-full animate-spin" style={{ borderColor: colors.primary, borderTopColor: "transparent" }} /></div>;
+
+  const phoneNumber = farmer?.phone_number || "";
 
   return (
     <div className="p-4 max-w-3xl mx-auto">
@@ -103,6 +130,14 @@ export default function ProfilePage() {
         <div className="mt-3">
           <Input label="Email Address" value={form.email} onChange={(e) => setForm({ ...form, email: (e.target as HTMLInputElement).value })} type="email" />
         </div>
+        {phoneNumber && (
+          <div className="mt-3">
+            <label className="block text-xs font-semibold mb-1" style={{ color: colors.gray[600] }}>Phone Number</label>
+            <div className="px-3.5 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm" style={{ color: colors.gray[700] }}>
+              +91 {phoneNumber}
+            </div>
+          </div>
+        )}
       </Card>
 
       <Card className="mb-4">
@@ -123,6 +158,52 @@ export default function ProfilePage() {
         <Input label="Land Size (acres) *" value={form.land_size} onChange={(e) => setForm({ ...form, land_size: (e.target as HTMLInputElement).value })} type="number" />
         <div className="mt-3"><Select label="Primary Crop Type" options={CROPS} value={form.crop_type} onValueChange={(v) => setForm({ ...form, crop_type: v })} placeholder="Select primary crop" /></div>
         <div className="mt-3"><Input label="Annual Farm Income (Rs)" value={form.farm_income} onChange={(e) => setForm({ ...form, farm_income: (e.target as HTMLInputElement).value })} type="number" /></div>
+      </Card>
+
+      {/* WhatsApp Notifications */}
+      <Card className="mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <MessageCircle size={20} color="#25D366" />
+          <h2 className="text-base font-bold" style={{ color: colors.gray[800] }}>WhatsApp Notifications</h2>
+        </div>
+        <p className="text-xs mb-3" style={{ color: colors.gray[500] }}>
+          Get real-time alerts for low stock, crop health changes, price updates, and a daily farm digest on WhatsApp.
+        </p>
+
+        <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200">
+          <div>
+            <p className="text-sm font-semibold m-0" style={{ color: colors.gray[800] }}>
+              {whatsappEnabled ? "Notifications Enabled" : "Enable Notifications"}
+            </p>
+            <p className="text-xs m-0 mt-0.5" style={{ color: colors.gray[500] }}>
+              {phoneNumber ? `Sending to +91 ${phoneNumber}` : "Phone number from login will be used"}
+            </p>
+          </div>
+          <button
+            onClick={toggleWhatsApp}
+            disabled={whatsappLoading}
+            className="relative w-12 h-7 rounded-full border-none cursor-pointer transition-colors disabled:opacity-50"
+            style={{
+              backgroundColor: whatsappEnabled ? "#25D366" : colors.gray[300],
+            }}
+          >
+            <span
+              className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-all"
+              style={{
+                left: whatsappEnabled ? "calc(100% - 1.625rem)" : "0.125rem",
+              }}
+            />
+          </button>
+        </div>
+
+        {whatsappEnabled && (
+          <div className="mt-3 p-3 rounded-lg text-xs" style={{ backgroundColor: "#E8F5E9", color: colors.primary }}>
+            <p className="m-0 font-semibold">Sandbox Setup Required</p>
+            <p className="m-0 mt-1">
+              Send <strong>"join &lt;sandbox-keyword&gt;"</strong> to <strong>+1 (415) 523-8886</strong> on WhatsApp to connect to the sandbox. You'll receive this keyword from your admin.
+            </p>
+          </div>
+        )}
       </Card>
 
       <Button onPress={handleSave} loading={loading} fullWidth size="lg">

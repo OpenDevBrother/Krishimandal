@@ -68,7 +68,7 @@ export default function SchemeDetailScreen({
           benefits: raw.benefits || (raw.benefits_inr ? [`\u20B9${raw.benefits_inr.toLocaleString()}`] : []),
           documents: raw.documents || raw.requirements || [],
           deadline: raw.deadline,
-          eligibility_status: raw.eligibility_status || (raw.eligibility_score >= 0.7 ? "eligible" : raw.eligibility_score >= 0.4 ? "partially_eligible" : "not_eligible"),
+          eligibility_status: raw.eligibility_status || (raw.eligibility_score != null ? (raw.eligibility_score >= 0.7 ? "eligible" : raw.eligibility_score >= 0.4 ? "partially_eligible" : "not_eligible") : "eligible"),
           eligibility_missing: raw.eligibility_missing || raw.missing_criteria || [],
         });
       } else {

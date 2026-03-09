@@ -12,6 +12,7 @@ import InventoryPage from "./pages/InventoryPage";
 import AddEditInventoryPage from "./pages/AddEditInventoryPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage";
+import LearningPage from "./pages/LearningPage";
 
 function AppRoutes() {
   const { isAuthenticated, loading } = useAuth();
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/inventory/add" element={<AddEditInventoryPage />} />
         <Route path="/inventory/edit/:itemId" element={<AddEditInventoryPage />} />
+        <Route path="/learn" element={<LearningPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

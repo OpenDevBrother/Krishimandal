@@ -15,12 +15,21 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.krishimandal.app",
       "adaptiveIcon": {
         "backgroundColor": "#2D5F2E",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -28,7 +37,26 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-font"
-    ]
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow KrishiMandal to access your photos for document upload.",
+          "cameraPermission": "Allow KrishiMandal to use your camera to scan documents."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow KrishiMandal to use your microphone for voice assistant."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "beab9373-3937-4dc8-9c55-4767effe307a"
+      }
+    },
+    "owner": "kyojinpp1234"
   }
 }

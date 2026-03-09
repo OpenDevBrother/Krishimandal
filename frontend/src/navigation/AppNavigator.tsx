@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+import DigitalTwinSidebar from "../components/DigitalTwinSidebar";
+import VoiceAssistant from "../components/VoiceAssistant";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -9,6 +11,7 @@ import {
   Package,
   Bell,
   User,
+  BookOpen,
 } from "lucide-react-native";
 import { useAuth } from "../services/authContext";
 import { apiClient } from "../services/api";
@@ -29,6 +32,7 @@ import ApplicationsScreen from "../screens/ApplicationsScreen";
 import InventoryScreen from "../screens/InventoryScreen";
 import AddEditInventoryScreen from "../screens/AddEditInventoryScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
+import LearningScreen from "../screens/LearningScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -95,6 +99,15 @@ function TabNavigator() {
         options={{
           tabBarIcon: ({ color, size }) => (
             <FileText size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Learning"
+        component={LearningScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <BookOpen size={size} color={color} />
           ),
         }}
       />
@@ -181,7 +194,15 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
+      {isAuthenticated ? (
+        <View style={{ flex: 1 }}>
+          <MainNavigator />
+          <DigitalTwinSidebar />
+          <VoiceAssistant />
+        </View>
+      ) : (
+        <AuthNavigator />
+      )}
     </NavigationContainer>
   );
 }

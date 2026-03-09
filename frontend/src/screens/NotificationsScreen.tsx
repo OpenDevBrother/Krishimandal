@@ -14,6 +14,7 @@ import {
   TrendingUp,
   DollarSign,
   Calendar,
+  AlertTriangle,
 } from "lucide-react-native";
 import Toast from "react-native-toast-message";
 import { apiClient } from "../services/api";
@@ -32,8 +33,19 @@ interface Notification {
   read: boolean;
 }
 
+interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  alert_threshold?: number;
+  threshold?: number;
+}
+
 export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<InventoryItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchNotifications = async () => {
@@ -51,15 +63,30 @@ export default function NotificationsScreen() {
     }
   };
 
+  const fetchLowStock = async () => {
+    try {
+      const path = await apiClient.farmPath("/inventory");
+      const data = await apiClient.get<InventoryItem[]>(path);
+      const low = data.filter((item) => {
+        const threshold = item.alert_threshold ?? item.threshold ?? 0;
+        return threshold > 0 && item.quantity <= threshold;
+      });
+      setLowStockItems(low);
+    } catch {
+      // ignore
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchNotifications();
+      fetchLowStock();
     }, [])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchNotifications();
+    await Promise.all([fetchNotifications(), fetchLowStock()]);
     setRefreshing(false);
   };
 
@@ -68,14 +95,18 @@ export default function NotificationsScreen() {
   const getIcon = (type: string) => {
     switch (type) {
       case "scheme":
+      case "scheme_deadline":
         return <FileText size={20} color={colors.blue[600]} />;
       case "subsidy":
         return <DollarSign size={20} color={colors.green[600]} />;
       case "inventory":
+      case "inventory_alert":
         return <Package size={20} color={colors.orange[600]} />;
       case "crop":
+      case "pest_warning":
         return <TrendingUp size={20} color={colors.purple[600]} />;
       case "application":
+      case "application_update":
         return <Calendar size={20} color={colors.cyan[600]} />;
       default:
         return <Bell size={20} color={colors.gray[500]} />;
@@ -103,6 +134,8 @@ export default function NotificationsScreen() {
     }
   };
 
+  const totalAlerts = unreadCount + lowStockItems.length;
+
   return (
     <View style={styles.container}>
       <Header />
@@ -121,9 +154,9 @@ export default function NotificationsScreen() {
               Stay updated with alerts and reminders
             </Text>
           </View>
-          {unreadCount > 0 && (
+          {totalAlerts > 0 && (
             <Badge
-              label={`${unreadCount} New`}
+              label={`${totalAlerts} New`}
               bgColor={colors.red[500]}
               textColor={colors.white}
             />
@@ -140,7 +173,49 @@ export default function NotificationsScreen() {
           />
         )}
 
-        {notifications.length === 0 ? (
+        {/* Low Stock Alerts */}
+        {lowStockItems.length > 0 && (
+          <Card
+            borderLeftColor={colors.red[500]}
+            style={styles.mb12}
+          >
+            <View style={styles.lowStockHeader}>
+              <AlertTriangle size={20} color={colors.red[600]} />
+              <Text style={styles.lowStockTitle}>Low Stock Alert</Text>
+              <Badge
+                label={`${lowStockItems.length}`}
+                bgColor={colors.red[500]}
+                textColor={colors.white}
+                textStyle={{ fontSize: 10 }}
+              />
+            </View>
+            <Text style={styles.lowStockSubtitle}>
+              The following items are running low and need restocking:
+            </Text>
+            {lowStockItems.map((item) => (
+              <View key={item.id} style={styles.lowStockRow}>
+                <Package size={16} color={colors.orange[600]} />
+                <View style={styles.lowStockInfo}>
+                  <Text style={styles.lowStockName}>{item.name}</Text>
+                  <Text style={styles.lowStockCategory}>
+                    {item.category}
+                  </Text>
+                </View>
+                <View style={styles.lowStockQty}>
+                  <Text style={styles.lowStockQtyText}>
+                    {item.quantity} {item.unit}
+                  </Text>
+                  <Text style={styles.lowStockThreshold}>
+                    min: {item.alert_threshold ?? item.threshold} {item.unit}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </Card>
+        )}
+
+        {/* Notifications */}
+        {notifications.length === 0 && lowStockItems.length === 0 ? (
           <Card>
             <View style={styles.emptyBox}>
               <Bell size={48} color={colors.gray[300]} />
@@ -229,9 +304,43 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "700", color: colors.gray[900], marginBottom: 2 },
   subtitle: { fontSize: 14, color: colors.gray[500] },
   mb12: { marginBottom: 12 },
+  // Low stock
+  lowStockHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
+  lowStockTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.red[700],
+    flex: 1,
+  },
+  lowStockSubtitle: {
+    fontSize: 12,
+    color: colors.gray[500],
+    marginBottom: 10,
+  },
+  lowStockRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[100],
+  },
+  lowStockInfo: { flex: 1 },
+  lowStockName: { fontSize: 14, fontWeight: "600", color: colors.gray[800] },
+  lowStockCategory: { fontSize: 11, color: colors.gray[400], textTransform: "capitalize" },
+  lowStockQty: { alignItems: "flex-end" },
+  lowStockQtyText: { fontSize: 14, fontWeight: "700", color: colors.red[600] },
+  lowStockThreshold: { fontSize: 10, color: colors.gray[400] },
+  // Empty
   emptyBox: { alignItems: "center", paddingVertical: 40 },
   emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.gray[700], marginTop: 12 },
   emptySubtitle: { fontSize: 13, color: colors.gray[500], marginTop: 4 },
+  // Notification
   notifRow: { flexDirection: "row", alignItems: "flex-start" },
   notifHeader: {
     flexDirection: "row",

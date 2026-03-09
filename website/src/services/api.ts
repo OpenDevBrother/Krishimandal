@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://d3iatlbqjvlvhl.cloudfront.net";
+const API_BASE_URL = "https://k8nl9mqzx8.execute-api.us-east-1.amazonaws.com/prod";
 
 class ApiClient {
   private baseUrl: string;

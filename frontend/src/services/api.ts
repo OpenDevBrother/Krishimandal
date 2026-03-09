@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = "http://<EC2_PUBLIC_IP>:8000"; // Replace with your EC2 Elastic IP
+const API_BASE_URL = "https://k8nl9mqzx8.execute-api.us-east-1.amazonaws.com/prod"; // API Gateway
 
 class ApiClient {
   private baseUrl: string;

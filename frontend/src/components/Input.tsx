@@ -38,9 +38,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.gray[300],
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,

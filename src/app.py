@@ -448,6 +448,65 @@ def rag_ingest():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── YouTube Search Proxy ─────────────────────────────────────────────────────
+
+@app.get("/youtube/search", tags=["Learning"], dependencies=[Depends(verify_api_key)])
+def youtube_search(q: str, max_results: int = 12):
+    """Proxy YouTube video search via Piped/Invidious APIs (avoids browser CORS)."""
+    import requests as _req
+
+    # Try Piped API first
+    try:
+        r = _req.get(
+            "https://pipedapi.kavin.rocks/search",
+            params={"q": q, "filter": "videos"},
+            timeout=6,
+        )
+        if r.ok:
+            data = r.json()
+            items = [
+                {
+                    "videoId": item.get("url", "").replace("/watch?v=", ""),
+                    "title": item.get("title", ""),
+                    "channel": item.get("uploaderName", ""),
+                    "thumbnail": item.get("thumbnail", ""),
+                    "duration": item.get("duration", 0),
+                }
+                for item in (data.get("items") or [])
+                if item.get("type") == "stream"
+            ][:max_results]
+            if items:
+                return {"videos": items, "source": "piped"}
+    except Exception as e:
+        logger.debug("Piped search failed: %s", e)
+
+    # Fallback: Invidious API
+    try:
+        r = _req.get(
+            "https://inv.nadeko.net/api/v1/search",
+            params={"q": q, "type": "video", "region": "IN"},
+            timeout=6,
+        )
+        if r.ok:
+            data = r.json()
+            items = [
+                {
+                    "videoId": item.get("videoId", ""),
+                    "title": item.get("title", ""),
+                    "channel": item.get("author", ""),
+                    "thumbnail": (item.get("videoThumbnails") or [{}])[0].get("url", ""),
+                    "duration": item.get("lengthSeconds", 0),
+                }
+                for item in (data or [])
+            ][:max_results]
+            if items:
+                return {"videos": items, "source": "invidious"}
+    except Exception as e:
+        logger.debug("Invidious search failed: %s", e)
+
+    return {"videos": [], "source": "none"}
+
+
 # ── Document Upload & OCR ────────────────────────────────────────────────────
 
 @app.post("/documents/upload", tags=["Documents"], dependencies=[Depends(verify_api_key)])
@@ -469,12 +528,15 @@ async def upload_document(farmer_id: str = "F1001"):
 
 
 @app.post("/documents/ocr", tags=["Documents"], dependencies=[Depends(verify_api_key)])
-def ocr_document(image_path: str = ""):
+def ocr_document(body: dict):
     """Run OCR on an uploaded document image."""
     from src.services.ocr_service import get_ocr_service
 
     ocr = get_ocr_service()
-    result = ocr.extract_text(image_path)
+    result = ocr.extract_text(
+        image_path=body.get("image_path", ""),
+        document_name=body.get("document_name", ""),
+    )
     return result
 
 

@@ -14,6 +14,7 @@ export type AuthStackParamList = {
 export type TabParamList = {
   Home: undefined;
   Schemes: undefined;
+  Learning: undefined;
   Inventory: undefined;
   Alerts: undefined;
   Profile: undefined;
@@ -76,5 +77,7 @@ export type NotificationsScreenProps = BottomTabScreenProps<
   TabParamList,
   "Alerts"
 >;
+
+export type LearningScreenProps = BottomTabScreenProps<TabParamList, "Learning">;
 
 export type ProfileScreenProps = BottomTabScreenProps<TabParamList, "Profile">;

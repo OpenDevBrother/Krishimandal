@@ -25,7 +25,7 @@ docker run -d --name krishimandal -p 8000:8000 --restart unless-stopped krishima
 
 # Seed database
 echo "Seeding database..."
-docker exec krishimandal python -c "from src.seed_db import seed_database; seed_database()"
+sudo docker exec krishimandal python -c "from src.seed_db import seed; seed()"
 
 echo "=== Done! Backend running on port 8000 ==="
 echo "Test: curl http://localhost:8000/docs"
